@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.wwm.eems.mapper.DictMapper">
+
+    <select id="getDictType" resultType="java.lang.String">
+        SELECT dict_type
+        FROM t_dict
+        group by dict_type
+        order by order_num;
+    </select>
+
+    <select id="findAll" parameterType="com.wwm.eems.model.request.DictDataRequest" resultType="com.wwm.eems.model.DictData">
+        SELECT *
+        FROM t_dict
+        <where>
+            <if test="dictType != null and dictType != ''">
+                and dict_type = #{dictType}
+            </if>
+            <if test="dictName != null and dictName != ''">
+                and dict_name = #{dictName}
+            </if>
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+        </where>
+        order by order_num;
+    </select>
+
+    <select id="findByType" resultType="DictData">
+        SELECT *
+        FROM t_dict
+        WHERE dict_type = #{dictType}
+--           AND status = 1
+        ORDER BY order_num
+    </select>
+
+    <select id="findById" resultType="DictData">
+        SELECT *
+        FROM t_dict
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_dict (dict_type, dict_name, order_num, status,
+                            create_time)
+        VALUES (#{dictType}, #{dictName}, #{orderNum}, #{status},
+                #{createTime},)
+    </insert>
+
+    <update id="update">
+        UPDATE t_dict
+        <set>
+            <if test="dictType != null">dict_type = #{dictType},</if>
+            <if test="dictName != null">dict_name = #{dictName},</if>
+            <if test="orderNum != null">order_num = #{orderNum},</if>
+            <if test="status != null">status = #{status},</if>
+            update_time = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE t_dict
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE
+        FROM t_dict
+        WHERE id = #{id}
+    </delete>
+</mapper>

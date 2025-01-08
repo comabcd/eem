@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wwm.eems.mapper.DepartmentMapper">
+
+    <select id="findAll" resultType="Department">
+        SELECT *
+        FROM t_department
+        ORDER BY parent_id, order_num
+    </select>
+
+    <select id="findById" resultType="Department">
+        SELECT *
+        FROM t_department
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByParentId" resultType="Department">
+        SELECT *
+        FROM t_department
+        WHERE parent_id = #{parentId}
+        ORDER BY order_num
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_department (dept_name, parent_id, order_num, status,
+                                  create_by, create_time, remark)
+        VALUES (#{deptName}, #{parentId}, #{orderNum}, #{status},
+                #{createBy}, #{createTime}, #{remark})
+    </insert>
+
+    <update id="update">
+        UPDATE t_department
+        <set>
+            <if test="deptName != null">dept_name = #{deptName},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="orderNum != null">order_num = #{orderNum},</if>
+            <if test="leader != null">leader = #{leader},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE t_department
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE
+        FROM t_department
+        WHERE id = #{id}
+    </delete>
+
+    <select id="findChildren" resultType="Department">
+        WITH RECURSIVE dept_tree AS (SELECT *
+                                     FROM t_department
+                                     WHERE parent_id = #{parentId}
+                                     UNION ALL
+                                     SELECT d.*
+                                     FROM t_department d
+                                              INNER JOIN dept_tree t ON d.parent_id = t.id)
+        SELECT *
+        FROM dept_tree
+    </select>
+
+    <select id="findByName" resultType="com.wwm.eems.model.Department">
+        select *
+        from t_department
+        where dept_name = #{department};
+    </select>
+
+    <select id="getTotalLeafDepartments" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM t_department d
+        WHERE d.status = 1
+          AND d.id NOT IN (
+            -- 获取所有作为父部门的ID
+            SELECT DISTINCT parent_id
+            FROM t_department
+            WHERE parent_id IS NOT NULL
+              AND status = 1);
+    </select>
+
+    <select id="getDeptDistribution" resultType="com.wwm.eems.model.vo.DeptDistributionVO">
+        SELECT
+            d.id,
+            d.parent_id,
+            d.dept_name as name,
+            COALESCE(COUNT(e.id), 0) as value
+        FROM
+            t_department d
+            LEFT JOIN
+            t_employee e ON d.id = e.dept_id AND e.status = 1
+        WHERE
+            d.status = 1
+        GROUP BY
+            d.id, d.parent_id, d.dept_name
+        ORDER BY
+            d.parent_id, d.id
+    </select>
+
+</mapper> 

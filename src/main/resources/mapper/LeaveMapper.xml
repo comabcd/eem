@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wwm.eems.mapper.LeaveMapper">
+    
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_leave (
+            employee_id, leave_type, start_time, end_time,duration,
+            reason, status, create_time
+        )
+        VALUES (
+            #{employeeId}, #{leaveType}, #{startTime}, #{endTime},#{duration},
+            #{reason}, #{status}, #{createTime}
+        )
+    </insert>
+    
+    <update id="update">
+        UPDATE t_leave
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="approverId != null">approver_id = #{approverId},</if>
+            <if test="approveTime != null">approve_time = #{approveTime},</if>
+            <if test="approveRemark != null">approve_remark = #{approveRemark},</if>
+            <if test="returnTime != null">return_time = #{returnTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete">
+        delete
+        from t_leave
+        where id = #{id}
+    </delete>
+
+    <select id="findById" resultType="Leave">
+        SELECT * FROM t_leave WHERE id = #{id}
+    </select>
+    
+    <select id="findByCondition" resultType="LeaveVO">
+        SELECT
+        l.*,
+        e1.employee_no,
+        e1.name,
+        e2.employee_no,
+        e2.name as approver,
+        p.post_name as post,
+        CASE l.leave_type
+        WHEN 1 THEN '事假'
+        WHEN 2 THEN '病假'
+        WHEN 3 THEN '年假'
+        WHEN 4 THEN '调休'
+        WHEN 5 THEN '其他'
+        ELSE '未知'
+        END as leave_type_name,
+        CASE l.status
+        WHEN 1 THEN '待审批'
+        WHEN 2 THEN '已驳回'
+        WHEN 3 THEN '待销假'
+        WHEN 4 THEN '已完成'
+        ELSE '未知'
+        END as status_name
+        FROM t_leave l
+        LEFT JOIN t_employee e1 ON l.employee_id = e1.id
+        LEFT JOIN t_post p ON e1.post_id = p.id
+        LEFT JOIN t_employee e2 ON l.approver_id = e2.id
+        <where>
+            <if test="employeeId != null">
+                AND l.employee_id = #{employeeId}
+            </if>
+            <if test="deptId != null and deptId != ''">
+                AND e1.dept_id = #{deptId}
+            </if>
+            <if test="postId != null and postId != ''">
+                AND e1.post_id = #{postId}
+            </if>
+            <if test="status != null">
+                AND l.status = #{status}
+            </if>
+            <if test="leaveType != null">
+                AND l.leave_type = #{leaveType}
+            </if>
+        </where>
+        ORDER BY l.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+    
+    <select id="countByCondition" resultType="long">
+        SELECT COUNT(*)
+        FROM t_leave l
+        LEFT JOIN t_employee e ON e.id = l.employee_id
+        <where>
+            <if test="employeeId != null">
+                AND l.employee_id = #{employeeId}
+            </if>
+            <if test="deptId != null and deptId != ''">
+                AND e.dept_id = #{deptId}
+            </if>
+            <if test="postId != null and postId != ''">
+                AND e.post_id = #{postId}
+            </if>
+            <if test="status != null">
+                AND l.status = #{status}
+            </if>
+            <if test="leaveType != null">
+                AND l.leave_type = #{leaveType}
+            </if>
+        </where>
+    </select>
+    
+    <select id="findOverlap" resultType="Leave">
+        SELECT * FROM t_leave
+        WHERE employee_id = #{employeeId}
+        AND status = 2  -- 已通过的请假记录
+        AND (
+            (start_time BETWEEN #{startTime} AND #{endTime})
+            OR (end_time BETWEEN #{startTime} AND #{endTime})
+            OR (start_time &lt;= #{startTime} AND end_time >= #{endTime})
+        )
+    </select>
+
+    <select id="getCurrentMonthLeaveDays" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(DATEDIFF(DATE(end_time), DATE(start_time)) + 1), 0) as total_days
+        FROM t_leave
+        WHERE status != 1 AND status != 2  -- 假设2表示已批准
+        AND DATE_FORMAT(DATE (start_time), '%Y%m') = DATE_FORMAT(CURDATE(), '%Y%m')
+        <if test="employeeId != null">
+            AND employee_id = #{employeeId}
+        </if>
+    </select>
+
+    <select id="getLeaveTypeCount" resultType="java.util.Map">
+        SELECT
+        CASE status
+        WHEN 1 THEN '待审批'
+        WHEN 2 THEN '已驳回'
+        WHEN 3 THEN '待销假'
+        WHEN 4 THEN '已完成'
+        ELSE '未知'
+        END as status_name,
+        COUNT(id) as count -- 请假条数
+        FROM
+        t_leave
+        <where>
+            <if test="employeeId != null">
+                AND employee_id = #{employeeId}
+            </if>
+        </where>
+        GROUP BY
+        status -- 添加 GROUP BY
+        ORDER BY count DESC -- 按请假条数降序排序
+    </select>
+
+    <select id="countCurrentLeave" resultType="java.lang.Long">
+        select COUNT(*)
+        FROM t_leave l
+                 LEFT JOIN t_employee e ON l.employee_id = e.id
+        WHERE e.dept_id = #{deptId}
+          AND l.status = 3
+          AND CURDATE() BETWEEN start_time
+          AND end_time
+    </select>
+
+    <select id="getDailyLeaveStats" resultType="java.util.Map">
+        SELECT DATE_FORMAT(date_list.date, '%Y-%m-%d') as leaveDate,
+               COUNT(DISTINCT l.employee_id) as count
+        FROM (
+            SELECT
+            DATE (DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL (a.a + (10 * b.a) + (100 * c.a)) DAY)) as date
+            FROM
+            (SELECT 0 as a UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+            UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+            UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) as a
+            CROSS JOIN
+            (SELECT 0 as a UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+            UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+            UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) as b
+            CROSS JOIN
+            (SELECT 0 as a UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+            UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+            UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) as c
+            WHERE
+            DATE (DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL (a.a + (10 * b.a) + (100 * c.a)) DAY))
+            BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())
+            ) as date_list
+            LEFT JOIN t_leave l
+        ON (
+            date_list.date BETWEEN l.start_time AND l.end_time
+            AND l.status = 3 -- 已批准的请假
+            )
+            LEFT JOIN t_employee e ON (e.id = l.employee_id AND e.dept_id = #{deptId})
+        GROUP BY
+            date_list.date
+        ORDER BY
+            date_list.date
+    </select>
+
+</mapper> 

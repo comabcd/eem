@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wwm.eems.mapper.EmployeeMapper">
+
+    <select id="findAll" resultType="Employee">
+        SELECT * FROM t_employee e
+        <where>
+            <if test="employeeNo != null and employeeNo != ''">
+                and employee_no = #{employeeNo}
+            </if>
+            <if test="name !=null and name != ''">
+                and name = #{name}
+            </if>
+            <if test="gender !=null and gender != ''">
+                and gender = #{gender}
+            </if>
+            <if test="deptId != null and deptId != ''">
+                and dept_id = #{deptId}
+            </if>
+            <if test="postId != null and postId != ''">
+                and post_id = #{postId}
+            </if>
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+            <if test="entryDate != null and entryDate != ''">
+                and entry_date = #{entryDate}
+            </if>
+        </where>
+    </select>
+
+    <select id="findById" resultType="Employee">
+        SELECT *
+        FROM t_employee
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByNo" resultType="Employee">
+        SELECT *
+        FROM t_employee
+        WHERE employee_no = #{employeeNo}
+    </select>
+
+    <select id="findByUserId" resultType="Employee">
+        SELECT *
+        FROM t_employee
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="findByDeptId" resultType="Employee">
+        SELECT *
+        FROM t_employee
+        WHERE dept_id = #{deptId}
+    </select>
+
+    <select id="findByPostId" resultType="Employee">
+        SELECT *
+        FROM t_employee
+        WHERE post_id = #{postId}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_employee (user_id, employee_no, name, gender, phone, email,
+                                education_id, political_id, dept_id, post_id, entry_date, status,
+                                create_by, create_time, remark)
+        VALUES (#{userId}, #{employeeNo}, #{name}, #{gender}, #{phone}, #{email},
+                #{educationId}, #{politicalId}, #{deptId}, #{postId}, #{entryDate}, #{status},
+                #{createBy}, #{createTime}, #{remark})
+    </insert>
+
+    <update id="update">
+        UPDATE t_employee
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="educationId != null">education_id = #{educationId},</if>
+            <if test="politicalId != null">political_id = #{politicalId},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="postId != null">post_id = #{postId},</if>
+            <if test="entryDate != null">entry_date = #{entryDate},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE t_employee
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE
+        FROM t_employee
+        WHERE id = #{id}
+    </delete>
+
+    <select id="findByCondition" resultType="EmployeeVO">
+        SELECT
+        e.*,
+        d.id as deptId,
+        d.dept_name as department,
+        p.id as postId,
+        p.post_name as post,
+        d1.id as politicalId,
+        d1.dict_name as political, -- 政治面貌名称
+        d2.id as educationId,
+        d2.dict_name as education -- 学历名称
+        FROM t_employee e
+        LEFT JOIN t_department d ON e.dept_id = d.id
+        LEFT JOIN t_post p ON e.post_id = p.id
+        LEFT JOIN t_dict d1 ON e.political_id = d1.id AND d1.dict_type = '政治面貌'
+        LEFT JOIN t_dict d2 ON e.education_id = d2.id AND d2.dict_type = '学历'
+        <where>
+            <if test="employeeNo != null and employeeNo != ''">
+                AND e.employee_no LIKE CONCAT('%', #{employeeNo}, '%')
+            </if>
+            <if test="name != null and name != ''">
+                AND e.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="gender != null">
+                AND e.gender = #{gender}
+            </if>
+            <if test="deptId != null">
+                AND e.dept_id = #{deptId}
+            </if>
+            <if test="postId != null">
+                AND e.post_id = #{postId}
+            </if>
+            <if test="status != null">
+                AND e.status = #{status}
+            </if>
+            <if test="entryDateStart != null">
+                AND e.entry_date >= #{entryDateStart}
+            </if>
+            <if test="entryDateEnd != null">
+                AND e.entry_date &lt;= #{entryDateEnd}
+            </if>
+        </where>
+        ORDER BY e.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countByCondition" resultType="long">
+        SELECT COUNT(*)
+        FROM t_employee e
+        <where>
+            <if test="employeeNo != null and employeeNo != ''">
+                AND e.employee_no LIKE CONCAT('%', #{employeeNo}, '%')
+            </if>
+            <if test="name != null and name != ''">
+                AND e.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="gender != null">
+                AND e.gender = #{gender}
+            </if>
+            <if test="deptId != null">
+                AND e.dept_id = #{deptId}
+            </if>
+            <if test="postId != null">
+                AND e.post_id = #{postId}
+            </if>
+            <if test="status != null">
+                AND e.status = #{status}
+            </if>
+            <if test="entryDateStart != null">
+                AND e.entry_date >= #{entryDateStart}
+            </if>
+            <if test="entryDateEnd != null">
+                AND e.entry_date &lt;= #{entryDateEnd}
+            </if>
+        </where>
+    </select>
+
+    <select id="findByUsername" resultType="com.wwm.eems.model.Employee">
+        select *
+        from t_employee
+        where employee_no = #{username}
+    </select>
+
+    <select id="getMonthlyOnboard" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM t_employee
+        WHERE status = 1
+          AND DATE_FORMAT(entry_date, '%Y%m') = DATE_FORMAT(CURDATE(), '%Y%m')
+    </select>
+
+    <select id="getMonthlyResign" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM t_employee
+        WHERE status = 2
+          AND DATE_FORMAT(resign_date, '%Y%m') = DATE_FORMAT(CURDATE(), '%Y%m')
+    </select>
+
+    <!-- 获取月初人数 -->
+    <select id="getMonthBeginningCount" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM t_employee
+        WHERE status = 1
+           OR (
+                    status = 2
+                AND DATE_FORMAT(resign_date, '%Y%m') = DATE_FORMAT(CURDATE(), '%Y%m')
+            )
+    </select>
+
+    <select id="getOnboardTrend" resultType="java.util.Map">
+        WITH RECURSIVE DateRange AS (SELECT CURDATE() - INTERVAL 29 DAY as date
+        UNION ALL
+        SELECT date + INTERVAL 1 DAY
+        FROM DateRange
+        WHERE date
+         &lt; CURDATE()
+            )
+        SELECT DATE_FORMAT(dr.date, '%Y-%m-%d') as date,
+        COUNT(e.id) as count
+        FROM
+            DateRange dr
+            LEFT JOIN
+            t_employee e
+        ON DATE (e.entry_date) = dr.date
+            AND e.status = 1
+        GROUP BY
+            dr.date
+        ORDER BY
+            dr.date;
+    </select>
+
+</mapper> 

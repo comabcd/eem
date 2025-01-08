@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wwm.eems.mapper.AttendanceMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_attendance (employee_id, attendance_date, check_in_time, check_out_time, status,
+                                  create_time, remark)
+        VALUES (#{employeeId}, #{attendanceDate}, #{checkInTime}, #{checkOutTime}, #{status},
+                #{createTime}, #{remark})
+    </insert>
+
+    <update id="update">
+        UPDATE t_attendance
+        <set>
+            <if test="checkOutTime != null">check_out_time = #{checkOutTime},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = CURRENT_TIMESTAMP
+        </set>
+        WHERE employee_id = #{employeeId}
+    </update>
+
+    <select id="findById" resultType="Attendance">
+        SELECT *
+        FROM t_attendance
+        WHERE id = #{id}
+    </select>
+
+    <select id="findTodayRecord" resultType="Attendance">
+        SELECT *
+        FROM t_attendance
+        WHERE employee_id = #{employeeId}
+          AND attendance_date = CURDATE()
+    </select>
+
+    <select id="findByCondition" resultType="AttendanceVO">
+        SELECT
+        a.*,
+        e.employee_no,
+        e.name,
+        p.post_name as post,
+        CASE a.status
+        WHEN 1 THEN '正常'
+        WHEN 2 THEN '迟到'
+        WHEN 3 THEN '早退'
+        WHEN 4 THEN '缺勤'
+        ELSE '未知'
+        END as status_name
+        FROM t_attendance a
+        LEFT JOIN t_employee e ON a.employee_id = e.id
+        LEFT JOIN t_post p ON e.post_id = p.id
+        <where>
+            <if test="employeeNo != null and employeeNo != ''">
+                AND e.employee_no = #{employeeNo}
+            </if>
+            <if test="name != null and name != ''">
+                AND e.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="deptId != null and deptId != ''">
+                AND e.dept_id = #{deptId}
+            </if>
+            <if test="postId != null and postId != ''">
+                AND e.post_id = #{postId}
+            </if>
+            <if test="date != null and date != ''">
+                AND a.attendance_date = #{date}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND a.attendance_date >= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND a.attendance_date &lt; #{endDate}
+            </if>
+            <if test="status != null and status != ''">
+                AND a.status = #{status}
+            </if>
+        </where>
+        ORDER BY attendance_date DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countByCondition" resultType="long">
+        SELECT COUNT(*)
+        FROM t_attendance a
+        LEFT JOIN t_employee e ON a.employee_id = e.id
+        <where>
+            <if test="employeeId != null">
+                AND a.employee_id = #{employeeId}
+            </if>
+            <if test="employeeNo != null and employeeNo != ''">
+                AND e.employee_no = #{employeeNo}
+            </if>
+            <if test="name != null and name != ''">
+                AND e.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="deptId != null and deptId != ''">
+                AND e.dept_id = #{deptId}
+            </if>
+            <if test="postId != null and postId != ''">
+                AND e.post_id = #{postId}
+            </if>
+            <if test="date != null and date != ''">
+                AND a.attendance_date = #{date}
+            </if>
+            <if test="status != null">
+                AND a.status = #{status}
+            </if>
+            LIMIT #{offset}, #{pageSize}
+        </where>
+    </select>
+
+    <select id="findOwnByCondition" resultType="com.wwm.eems.model.vo.AttendanceEmployeeVO">
+        SELECT
+        a.attendance_date as date,
+        a.check_in_time,
+        a.check_out_time,
+        a.status,
+        a.remark
+        FROM t_attendance a
+        <where>
+            employee_id = #{employeeId}
+            <if test="startDate != null">
+                AND a.attendance_date >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND a.attendance_date &lt;= #{endDate}
+            </if>
+            <if test="status != null">
+                AND a.status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="countTodayAbnormal" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM t_attendance a
+                 LEFT JOIN t_employee e ON a.employee_id = e.id
+        WHERE e.dept_id = #{deptId}
+          AND a.status != 1 AND a.attendance_date = DATE(NOW())
+    </select>
+
+    <select id="getMonthlyStats" resultType="com.wwm.eems.model.vo.AttendanceStatsVO">
+        SELECT SUM(CASE
+        WHEN a.status = 1 THEN 1
+        ELSE 0
+        END) as normal,
+        SUM(CASE
+        WHEN a.status = 2 THEN 1
+        ELSE 0
+        END) as late,
+        SUM(CASE
+        WHEN a.status = 3 THEN 1
+        ELSE 0
+        END) as early,
+        SUM(CASE
+        WHEN a.status = 4 THEN 1
+        ELSE 0
+        END) as absent
+        FROM t_attendance a
+        LEFT JOIN t_employee e ON a.employee_id = e.id
+        <where>
+            a.attendance_date BETWEEN
+            DATE_FORMAT(CURDATE(), '%Y-%m-01')
+            AND LAST_DAY(CURDATE())
+            <if test="deptId != null and deptId !=''">
+                AND e.dept_id = #{deptId}
+            </if>
+            <if test="empId != null and empId != ''">
+                AND a.employee_id = #{empId}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectMonthlyAttendance" resultType="com.wwm.eems.model.Attendance">
+        SELECT *
+        FROM t_attendance
+        WHERE employee_id = #{empId}
+          AND attendance_date >= #{startDate}
+          AND attendance_date &lt; #{endDate}
+        ORDER BY attendance_date ASC
+    </select>
+
+</mapper> 

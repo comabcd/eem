@@ -1,0 +1,9 @@
+html.dark {
+    // 自定义暗黑主题变量
+    --el-bg-color: #626aef;
+    
+    // 自定义组件暗黑样式
+    .your-component {
+      background-color: var(--el-bg-color);
+    }
+  }
