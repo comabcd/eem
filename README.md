@@ -38,4 +38,8 @@
 ![image](https://github.com/user-attachments/assets/ec630173-e528-4a5a-be7f-b22817a70001)
 ![image](https://github.com/user-attachments/assets/e1e1a56b-4dd5-474b-8bb4-c5542f1768ee)
 
+## 备注
+该系统仍有小部分bug,可自行寻找修改一下。（也可加vx共同探讨一下，备注来意）
+v：18983930848
+
 
